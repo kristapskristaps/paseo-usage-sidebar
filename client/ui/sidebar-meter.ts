@@ -297,7 +297,7 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
         const stats = row.window.tokenUsage;
         const usage = stats ? formatSidebarUsage(stats, locale, messages) : null;
         const head = document.createElement("div");
-        head.style.cssText = "display:flex;flex-direction:column;gap:3px;";
+        head.style.cssText = "display:flex;justify-content:space-between;align-items:baseline;gap:8px;";
 
         const label = document.createElement("span");
         const resetAt = row.window.resetsAt ? new Date(row.window.resetsAt) : null;
@@ -312,7 +312,7 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
         value.textContent = [row.usedPct != null ? formatPct(row.usedPct, locale) : "\u2014", cost]
           .filter(Boolean).join(" · ");
         if (usage) value.setAttribute("aria-label", usage.detail);
-        value.style.cssText = `color:${labelColor};font-size:11px;font-weight:500;flex-shrink:0;`;
+        value.style.cssText = `color:${labelColor};font-size:11px;font-weight:500;flex-shrink:0;white-space:nowrap;`;
 
         head.append(label, value);
 
