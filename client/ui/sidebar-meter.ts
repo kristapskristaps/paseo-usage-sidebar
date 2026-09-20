@@ -11,6 +11,7 @@ import {
   formatResetSecondary,
   formatRunsOutLabel,
   formatSidebarUsage,
+  formatTokenCount,
   resolveTone,
 } from "../../shared/usage/format";
 import { STATUS_DARK, STATUS_LIGHT, type Palette } from "../../shared/usage/palette";
@@ -291,15 +292,19 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
         const item = document.createElement("div");
         item.style.cssText = "display:flex;flex-direction:column;gap:3px;";
 
+        const timing = rowTiming(row, messages, locale);
+        const stats = row.window.tokenUsage;
+        const usage = stats ? formatSidebarUsage(stats, locale, messages) : null;
         const head = document.createElement("div");
-        head.style.cssText = "display:flex;justify-content:space-between;gap:8px;align-items:baseline;";
+        head.style.cssText = "display:flex;flex-direction:column;gap:3px;";
 
         const label = document.createElement("span");
-        label.textContent = row.label;
-        label.style.cssText = `color:${labelColor};font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+        label.textContent = [row.label, timing.text].filter(Boolean).join(" ");
+        label.style.cssText = `color:${timing.atRisk ? palette.danger : labelColor};font-size:11px;line-height:1.4;`;
 
         const value = document.createElement("span");
-        value.textContent = row.usedPct != null ? formatPct(row.usedPct, locale) : "\u2014";
+        value.textContent = [row.usedPct != null ? formatPct(row.usedPct, locale) : "\u2014", usage?.cost]
+          .filter(Boolean).join(" · ");
         value.style.cssText = `color:${labelColor};font-size:11px;font-weight:500;flex-shrink:0;`;
 
         head.append(label, value);
@@ -313,18 +318,6 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
         track.append(fill);
         item.append(head, track);
 
-        // A percentage alone cannot be acted on: 90% used is fine with a reset an
-        // hour out and a problem with three days to go.
-        const timing = rowTiming(row, messages, locale);
-        if (timing.text) {
-          const foot = document.createElement("div");
-          foot.textContent = timing.text;
-          // Same size as the label and barely dimmed: this is the number that
-          // says whether the percentage above it matters, so it has to survive a
-          // glance at a dark sidebar rather than fade into it.
-          foot.style.cssText = `color:${timing.atRisk ? palette.danger : labelColor};font-size:11px;opacity:${timing.atRisk ? "1" : "0.85"};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
-          item.append(foot);
-        }
         if (timing.alternate) {
           item.title = `${row.label} · ${timing.alternate}`;
           // The meter as a whole is click-through; a row with a tooltip has to opt
@@ -332,30 +325,14 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
           item.style.pointerEvents = "auto";
         }
 
-        if (row.window.tokenUsage) {
-          const usage = formatSidebarUsage(row.window.tokenUsage, locale, messages);
+        if (usage) {
           const overview = document.createElement("div");
-          overview.style.cssText = `display:flex;flex-direction:column;gap:3px;margin-top:3px;color:${labelColor};font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums;`;
+          overview.style.cssText = `color:${labelColor};font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;`;
           overview.title = usage.detail;
           overview.setAttribute("aria-label", usage.detail);
           overview.style.pointerEvents = "auto";
-
-          const totals = document.createElement("div");
-          totals.style.cssText = "display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:600;";
-          for (const text of [usage.total, usage.cost]) {
-            if (!text) continue;
-            const value = document.createElement("span");
-            value.textContent = text;
-            totals.append(value);
-          }
-          overview.append(totals);
-          for (const text of [usage.mix]) {
-            if (!text) continue;
-            const line = document.createElement("div");
-            line.textContent = text;
-            line.style.overflowWrap = "anywhere";
-            overview.append(line);
-          }
+          const total = usage.mix && stats ? formatTokenCount(stats.totalTokens, locale) : usage.total;
+          overview.textContent = [total, usage.mix].filter(Boolean).join(" · ");
           item.append(overview);
         }
 
