@@ -70,9 +70,9 @@ or Partial while quota bars keep working.
 
 The model list contains only models observed in aligned local records. Costs are API-equivalent
 Pi-logged estimates from Pi's local rate table, not verified current public API prices; unknown
-prices are shown as unknown, never `$0`. An optional positive **Monthly fee (USD)** is stored per provider. A window
-estimate is labelled as a percentage of that provider's **full monthly fee** only; it is not an
-actual bill, savings, or a prorated quota budget. Blank fee disables that comparison.
+prices are shown as unknown, never `$0`. Only API-equivalent cost is displayed; there is no monthly
+subscription comparison. Previously saved monthly-fee settings are retained for compatibility but
+are not shown or editable in the panel.
 
 ## The sidebar meter
 

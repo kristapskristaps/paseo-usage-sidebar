@@ -225,9 +225,9 @@ const glance = formatSidebarUsage(stats, "en", messagesFor("en"));
 assert.equal(glance.total, "100 tokens");
 assert.equal(glance.mix, "In 10% · Out 20% · Cache 70%");
 assert.equal(glance.cost, "API ≈ $1.50+");
-assert.equal(glance.fee, "15%+ of monthly fee");
+assert(!glance.detail.includes("monthly fee"));
 assert.match(glance.detail, /Some calls had no logged price/);
-assert(![glance.total, glance.mix, glance.cost, glance.fee].join(" ").includes("calls"));
+assert(![glance.total, glance.mix, glance.cost].join(" ").includes("calls"));
 assert.equal(formatSidebarUsage({ ...stats, estimatedCost: null, monthlyFeePct: null }, "en", messagesFor("en")).cost, null);
 
 const previousStateHome = process.env.XDG_STATE_HOME;

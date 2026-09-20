@@ -349,7 +349,7 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
             totals.append(value);
           }
           overview.append(totals);
-          for (const text of [usage.mix, usage.fee]) {
+          for (const text of [usage.mix]) {
             if (!text) continue;
             const line = document.createElement("div");
             line.textContent = text;

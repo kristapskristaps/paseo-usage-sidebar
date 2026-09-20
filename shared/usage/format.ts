@@ -218,10 +218,7 @@ export function formatTokenCost(stats: TokenUsage, locale: Locale, messages: Mes
     return messages.tokenCostUnknown;
   }
   const estimate = formatEstimatedCost(stats.estimatedCost, locale);
-  const line =
-    stats.monthlyFeePct == null
-      ? messages.tokenCost(estimate)
-      : messages.tokenCostMonthly(estimate, formatRatioPct(stats.monthlyFeePct, locale));
+  const line = messages.tokenCost(estimate);
   return stats.costStatus === "partial" ? `${line} · ${messages.tokenCostPartial}` : line;
 }
 
@@ -230,7 +227,7 @@ export function formatSidebarUsage(stats: TokenUsage, locale: Locale, messages: 
   const detail = [formatTokenSummary(stats, locale, messages), formatTokenCost(stats, locale, messages)]
     .filter(Boolean).join("\n");
   if (stats.status === "unsupported" || stats.status === "unavailable" || stats.knownCalls === 0) {
-    return { total: formatTokenSummary(stats, locale, messages), mix: null, cost: null, fee: null, detail };
+    return { total: formatTokenSummary(stats, locale, messages), mix: null, cost: null, detail };
   }
   const percent = (value: number | null) => value == null ? "—" : formatRatioPct(value, locale);
   const partial = stats.costStatus === "partial" || stats.status === "partial";
@@ -240,8 +237,6 @@ export function formatSidebarUsage(stats: TokenUsage, locale: Locale, messages: 
       percent(stats.cacheReadPct)),
     cost: stats.estimatedCost == null ? null : messages.sidebarCost(
       `${formatEstimatedCost(stats.estimatedCost, locale)}${partial ? "+" : ""}`),
-    fee: stats.monthlyFeePct == null ? null : messages.sidebarFee(
-      `${formatRatioPct(stats.monthlyFeePct, locale)}${partial ? "+" : ""}`),
     detail,
   };
 }

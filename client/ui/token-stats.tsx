@@ -1,6 +1,6 @@
 import type { PluginTheme } from "@getpaseo/plugin";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Messages, Locale } from "../../shared/i18n/messages";
 import { formatEstimatedCost, formatTokenCost, formatTokenCount, formatTokenMix, formatTokenSummary } from "../../shared/usage/format";
 import type { TokenUsage } from "../../shared/usage/contract";
@@ -23,20 +23,6 @@ function useStyles(theme: PluginTheme) {
     settings: { gap: SPACE.two, paddingTop: SPACE.two },
     label: { color: theme.colors.foreground, fontSize: 12, fontWeight: "500" },
     hint: { color: theme.colors.foregroundMuted, fontSize: 11, lineHeight: 15 },
-    inputRow: { flexDirection: "row", alignItems: "center", gap: SPACE.two },
-    input: {
-      flex: 1,
-      minHeight: 44,
-      paddingHorizontal: SPACE.two,
-      paddingVertical: SPACE.one,
-      borderWidth: 1,
-      borderColor: theme.colors.border,
-      borderRadius: 6,
-      color: theme.colors.foreground,
-      backgroundColor: theme.colors.surface1,
-      fontSize: 14,
-    },
-    inputFocused: { borderColor: theme.colors.accent },
     saveButton: {
       minHeight: 44,
       paddingHorizontal: SPACE.three,
@@ -137,29 +123,17 @@ export function ProviderUsageSettings({
   onSave,
 }: ProviderUsageSettingsProps) {
   const styles = useStyles(theme);
-  const [feeDraft, setFeeDraft] = useState(monthlyFee == null ? "" : String(monthlyFee));
   const [durationDraft, setDurationDraft] = useState<WindowDuration | null>(sessionDuration);
-  const [focused, setFocused] = useState(false);
-  const [validationError, setValidationError] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setFeeDraft(monthlyFee == null ? "" : String(monthlyFee));
     setDurationDraft(sessionDuration);
-  }, [monthlyFee, sessionDuration]);
+  }, [sessionDuration]);
 
   async function save(): Promise<void> {
-    const value = feeDraft.trim();
-    const fee = value === "" ? null : Number(value);
-    if (fee !== null && (!Number.isFinite(fee) || fee <= 0)) {
-      setValidationError(true);
-      setSaved(false);
-      return;
-    }
-    setValidationError(false);
     setSaved(false);
     try {
-      await onSave({ monthlyFee: fee, sessionDuration: durationDraft });
+      await onSave({ monthlyFee, sessionDuration: durationDraft });
       setSaved(true);
     } catch {
       setSaved(false);
@@ -168,39 +142,6 @@ export function ProviderUsageSettings({
 
   return (
     <View style={styles.settings}>
-      <Text style={styles.label}>{messages.monthlyFeeLabel}</Text>
-      <Text style={styles.hint}>{messages.monthlyFeeHint}</Text>
-      <View style={styles.inputRow}>
-        <TextInput
-          accessibilityLabel={messages.monthlyFeeLabel}
-          value={feeDraft}
-          onChangeText={(value) => {
-            setFeeDraft(value);
-            setValidationError(false);
-            setSaved(false);
-          }}
-          placeholder={messages.monthlyFeePlaceholder}
-          placeholderTextColor={theme.colors.foregroundMuted}
-          keyboardType="decimal-pad"
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          style={[styles.input, focused ? styles.inputFocused : null]}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={saving ? messages.saving : messages.saveSettings}
-          accessibilityState={{ busy: saving, disabled: saving }}
-          disabled={saving}
-          onPress={() => void save()}
-          style={[styles.saveButton, saving ? styles.saveButtonDisabled : null]}
-        >
-          <Text style={styles.saveLabel}>{saving ? messages.saving : messages.saveSettings}</Text>
-        </Pressable>
-      </View>
-      {validationError ? <Text style={styles.error}>{messages.monthlyFeeInvalid}</Text> : null}
-      {saveError ? <Text style={styles.error}>{messages.settingsSaveError}</Text> : null}
-      {saved && !saving ? <Text style={styles.saved}>{messages.saved}</Text> : null}
-
       {hasAmbiguousSession ? (
         <View style={styles.settings}>
           <Text style={styles.label}>{messages.durationLabel}</Text>
@@ -232,6 +173,19 @@ export function ProviderUsageSettings({
           </View>
         </View>
       ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={saving ? messages.saving : messages.saveSettings}
+          accessibilityState={{ busy: saving, disabled: saving }}
+          disabled={saving}
+          onPress={() => void save()}
+          style={[styles.saveButton, saving ? styles.saveButtonDisabled : null]}
+        >
+          <Text style={styles.saveLabel}>{saving ? messages.saving : messages.saveSettings}</Text>
+        </Pressable>
+      {saveError ? <Text style={styles.error}>{messages.settingsSaveError}</Text> : null}
+      {saved && !saving ? <Text style={styles.saved}>{messages.saved}</Text> : null}
+
     </View>
   );
 }
