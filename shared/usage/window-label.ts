@@ -2,16 +2,15 @@ import type { Messages } from "../i18n/messages";
 import type { UsageWindow } from "./contract";
 
 /**
- * Paseo labels Claude's rolling windows "Session" and "Weekly · <model>". The
- * first says nothing about the actual period and the second is not localizable,
- * so the daemon's window ids are mapped onto this plugin's own message table
- * instead — which also means every label follows the app's language setting:
+ * Daemon ids are mapped onto this plugin's own message table where their
+ * duration is explicit, so labels follow the app's language setting:
  *
- *   five_hour            → the 5-hour rolling window (labelled "Session")
- *   weekly               → the 7-day window
+ *   five_hour            → the known 5-hour rolling window
+ *   weekly               → the known 7-day window
  *   weekly_<model>       → a model-scoped 7-day window, e.g. weekly_model_fable
  *   daily / monthly      → other providers' fixed windows
- *   coding_limit_*, interval_*, everything else → keep the daemon's own label
+ *   session and unknown ids → keep the daemon's own label; token alignment
+ *                             needs an explicit duration when the id is ambiguous
  *
  * The model suffix is taken from the daemon's label ("Weekly · Fable") when it
  * has one, because that is the provider's display name for it; the id is only a

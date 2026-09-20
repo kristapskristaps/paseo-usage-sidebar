@@ -28,6 +28,7 @@ import { paletteForSurface } from "../../shared/usage/palette";
 import { isRtl, messagesFor, type Locale, type Messages } from "../../shared/i18n/messages";
 import { getLocale, subscribeLocale } from "../i18n/locale";
 import { publishSelection } from "../selection/store";
+import { ProviderUsageSettings, TokenStats } from "./token-stats";
 import {
   defaultKeys,
   pinnedRows,
@@ -46,9 +47,17 @@ import {
   type UsageTone,
   type UsageWindow,
 } from "../../shared/usage/contract";
+import {
+  readSettings,
+  windowDurationKey,
+  writeSettings,
+  type UsageSettings,
+  type WindowDuration,
+} from "../../shared/usage/settings";
 
 const REFRESH_INTERVAL_MS = 60_000;
 const STALE_TIME_MS = 30_000;
+const EMPTY_SETTINGS: UsageSettings = { monthlyFees: {}, windowDurations: {} };
 
 /** Paseo's design tokens, inlined because the plugin theme only exposes colors. */
 const SPACE = { 1: 4, 1.5: 6, 2: 8, 3: 12, 4: 16, 6: 24 } as const;
@@ -289,6 +298,7 @@ function WindowBar({
           style={[styles.fill, { width: `${clampPct(usedPct ?? 0)}%`, backgroundColor: fillColor(theme, tone) }]}
         />
       </View>
+      <TokenStats stats={window.tokenUsage} theme={theme} locale={locale} messages={messages} />
     </View>
   );
 }
@@ -633,6 +643,11 @@ function ProviderBlock({
   messages,
   pinnedKeys,
   onTogglePin,
+  settings,
+  settingsReady,
+  savingSettings,
+  settingsSaveError,
+  onSaveSettings,
 }: {
   provider: ProviderUsage;
   theme: PluginTheme;
@@ -641,6 +656,11 @@ function ProviderBlock({
   messages: Messages;
   pinnedKeys: ReadonlySet<string>;
   onTogglePin: (key: string) => void;
+  settings: UsageSettings;
+  settingsReady: boolean;
+  savingSettings: boolean;
+  settingsSaveError: boolean;
+  onSaveSettings: (value: { monthlyFee: number | null; sessionDuration: WindowDuration | null }) => Promise<void>;
 }) {
   const status = statusLabel(provider.status, messages);
   const footer = useMemo(() => {
@@ -649,6 +669,10 @@ function ProviderBlock({
   }, [provider.sourceLabel, provider.fetchedAt, messages]);
 
   const hasBars = provider.windows.length > 0 || provider.balances.length > 0;
+  const hasAmbiguousSession =
+    provider.providerId === "codex" && provider.windows.some((window) => window.id === "session");
+  const monthlyFee = settings.monthlyFees[provider.providerId] ?? null;
+  const sessionDuration = settings.windowDurations[windowDurationKey(provider.providerId, "session")] ?? null;
 
   return (
     <View style={styles.provider}>
@@ -681,6 +705,19 @@ function ProviderBlock({
         <Text style={styles.providerError} numberOfLines={3}>
           {provider.error}
         </Text>
+      ) : null}
+
+      {settingsReady && provider.providerId === "codex" && provider.status === "available" ? (
+        <ProviderUsageSettings
+          theme={theme}
+          messages={messages}
+          monthlyFee={monthlyFee}
+          sessionDuration={sessionDuration}
+          hasAmbiguousSession={hasAmbiguousSession}
+          saving={savingSettings}
+          saveError={settingsSaveError}
+          onSave={onSaveSettings}
+        />
       ) : null}
 
       {hasBars ? (
@@ -757,6 +794,8 @@ export function UsageSurface({ theme, layout }: PluginSurfaceProps) {
   const fetchUsage = useRpc(listUsage);
   const fetchSelection = useRpc(readSelection);
   const persistSelection = useRpc(writeSelection);
+  const fetchSettings = useRpc(readSettings);
+  const persistSettings = useRpc(writeSettings);
 
   const query = useQuery<UsageSnapshot>({
     queryKey: ["usage-sidebar", "snapshot"],
@@ -776,7 +815,14 @@ export function UsageSurface({ theme, layout }: PluginSurfaceProps) {
     staleTime: Number.POSITIVE_INFINITY,
   });
 
+  const settingsQuery = useQuery<UsageSettings>({
+    queryKey: ["usage-sidebar", "settings"],
+    queryFn: () => fetchSettings({}),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+
   const providers = query.data?.providers ?? [];
+  const settings = settingsQuery.data ?? EMPTY_SETTINGS;
   const refreshing = useBusy(query.isFetching);
 
   /**
@@ -819,6 +865,34 @@ export function UsageSurface({ theme, layout }: PluginSurfaceProps) {
       publishSelection(selection);
     },
   });
+
+  const saveSettings = useMutation({
+    mutationFn: (next: UsageSettings) => persistSettings(next),
+    onSuccess: (next) => {
+      queryClient.setQueryData(["usage-sidebar", "settings"], next);
+      void queryClient.invalidateQueries({ queryKey: ["usage-sidebar", "snapshot"] });
+    },
+  });
+
+  const updateProviderSettings = (
+    providerId: string,
+    value: { monthlyFee: number | null; sessionDuration: WindowDuration | null },
+  ): Promise<UsageSettings> => {
+    const monthlyFees = { ...settings.monthlyFees };
+    const windowDurations = { ...settings.windowDurations };
+    if (value.monthlyFee == null) {
+      delete monthlyFees[providerId];
+    } else {
+      monthlyFees[providerId] = value.monthlyFee;
+    }
+    const sessionKey = windowDurationKey(providerId, "session");
+    if (value.sessionDuration == null) {
+      delete windowDurations[sessionKey];
+    } else {
+      windowDurations[sessionKey] = value.sessionDuration;
+    }
+    return saveSettings.mutateAsync({ monthlyFees, windowDurations });
+  };
 
   const commitOrder = (keys: string[]) => {
     setLocalOrder(keys);
@@ -909,6 +983,13 @@ export function UsageSurface({ theme, layout }: PluginSurfaceProps) {
                   messages={messages}
                   pinnedKeys={pinnedKeys}
                   onTogglePin={togglePin}
+                  settings={settings}
+                  settingsReady={settingsQuery.data != null}
+                  savingSettings={saveSettings.isPending}
+                  settingsSaveError={saveSettings.isError}
+                  onSaveSettings={(value) =>
+                    updateProviderSettings(provider.providerId, value).then(() => undefined)
+                  }
                 />
               </Fragment>
             ))}

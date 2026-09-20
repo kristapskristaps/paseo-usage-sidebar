@@ -6,9 +6,10 @@ Provider plan usage in the [Paseo](https://paseo.sh) sidebar — as a panel you 
 always-visible meter under the sidebar entry.
 
 Paseo already tracks how much of your plan is left; it just keeps that behind a settings screen and
-a hover tooltip on the composer's context meter. This plugin puts the same numbers where you see
-them without going to look. It adds no credentials, no vendor CLI, and no second polling path: the
-data is Paseo's own `provider.usage.list`, so it always agrees with **Settings → Usage**.
+a hover tooltip on the composer's context meter. This plugin puts quota readings where you see them
+without going to look, and adds local Pi session-log token details. It adds no credentials, vendor
+CLI, or external network access: quota data is Paseo's own `provider.usage.list`, while token data
+is explicitly local and separate.
 
 ![The sidebar meter and the usage panel](images/overview.png)
 
@@ -36,6 +37,7 @@ Same layout as **Settings → Usage**: one bordered card, one row per provider.
 | **Quota window** | `57% · resets in 2h 15m`, or `57% · resets at Nov 12, 10:00` once the reset is more than a day out. |
 | **Balance** | Money, credits, requests, or tokens — against a ceiling when the provider reports one. |
 | **Detail** | Provider-supplied key/value lines such as `Extra usage: Disabled`. |
+| **Local token stats** | Input/output/cache-read mix, token count, API-equivalent Pi-logged cost estimate, and observed-model details for aligned live windows. |
 | **Status** | Providers you are not signed into stay listed with an `Unavailable` dot instead of vanishing. |
 
 It refreshes every 60 seconds, and on demand from **Refresh**.
@@ -44,18 +46,40 @@ Two things differ from the settings screen. Rows lead with the provider's name r
 because brand icons live in a host-internal registry plugins cannot import. And the bars use this
 plugin's own [colour ramp](#colour) rather than the host's status tokens.
 
-Window names are rebuilt from the daemon's ids instead of passed through, so they follow your
-language and say what period they cover: the daemon calls the 5-hour window `Session`, and spells
-the model-scoped one `Weekly · Fable` in English only.
+Window names are rebuilt from ids only where duration is known. `five_hour` is labelled as the
+5-hour window and `weekly` as the 7-day window. An SDK `session` label stays literal because its
+actual period can be 5 hours or 7 days; choose that duration in the provider settings before local
+token stats align. Scoped or unknown windows remain unsupported for local alignment.
 
 ![The usage panel](images/usage-panel.png)
+
+### Local token stats
+
+Token stats read numeric usage, model, timestamp, and message IDs from local Pi session JSONL files.
+Whole JSONL records are parsed locally; message bodies are not extracted, logged, persisted, or returned. Credentials and auth files are never read. All valid records are considered,
+including abandoned branches and forked histories; copied records are deduplicated by IDs plus
+metadata. A zero-filled usage object is not treated as free: it appears as unknown usage. Reasoning
+is not added separately because Pi's output count already includes it.
+
+Stats align against the current live quota window, not an inferred calendar period. Boundaries are
+`reset - known duration <= timestamp <= now < reset`; future-start windows are rejected. `five_hour` is exactly five hours and `weekly` is
+exactly seven days. Codex `session` requires the explicit **5 hours**, **7 days**, or **Not set**
+choice in the panel; no reset-distance or plan-label guess is made. Scoped and other unknown ids
+show Unsupported. Files that cannot be read or contain malformed/truncated lines show Unavailable
+or Partial while quota bars keep working.
+
+The model list contains only models observed in aligned local records. Costs are API-equivalent
+Pi-logged estimates from Pi's local rate table, not verified current public API prices; unknown
+prices are shown as unknown, never `$0`. An optional positive **Monthly fee (USD)** is stored per provider. A window
+estimate is labelled as a percentage of that provider's **full monthly fee** only; it is not an
+actual bill, savings, or a prorated quota budget. Blank fee disables that comparison.
 
 ## The sidebar meter
 
 *Desktop and web only.*
 
-One row per pinned window, directly under the sidebar entry: label, percentage, a thin bar, and the
-reset. Same 60-second cycle, no click needed.
+One row per pinned window, directly under the sidebar entry: label, percentage, a thin bar, reset,
+and compact local token mix/count/cost when available. Same 60-second cycle, no click needed.
 
 <p align="center">
   <img src="images/sidebar-meter.png" alt="The sidebar meter on the Light theme" width="320">
@@ -161,30 +185,38 @@ English, so on a non-English install this panel is localized where **Settings �
 response against the plugin's own Zod mirror of `provider.usage.list`, so a provider reporting a
 window shape this plugin does not model degrades to a missing field rather than crashing the
 surface. Each provider row's footer shows that provider's own source label and how long ago the
-numbers were fetched.
+quota numbers were fetched.
 
-Percentages, and their refresh cadence, are the daemon's. The plugin re-derives and estimates
-nothing, so a provider that rate-limits its own usage endpoint stays stale until Paseo refreshes it.
+Percentages, quota reset timestamps, and their refresh cadence are the daemon's. The plugin does not
+re-estimate quota usage. Local token stats are a separate best-effort reader with a shared 15-second
+poll/in-flight cache; unchanged JSONL files are reused by `mtime` and size. The reader uses
+`$PI_CODING_AGENT_DIR/sessions` when that override contains the expected root, otherwise
+`~/.pi/agent/sessions`.
+
+This is not account-wide usage. It covers only readable local Pi session logs and only records that
+fit the current live windows. No external network or public-price lookup is performed.
 
 ## Security
 
 Paseo plugins are unsandboxed by design, so this is worth reading before you trust one.
 
-- **Server code** runs in a daemon subprocess and calls exactly one SDK method,
-  `paseo.providers.listUsage()`. No other daemon operation, no sockets of its own.
+- **Server code** calls `paseo.providers.listUsage()` and reads only local Pi session JSONL files under
+  the configured session root. It extracts numeric usage, model, timestamp, and IDs; message bodies
+  and file paths never enter RPC output or plugin logs.
 - **No credentials** are read, stored, or transmitted. The plugin never touches `~/.claude`,
-  `~/.codex`, the macOS Keychain, or any provider token.
-- **No outbound network access.** Nothing leaves the machine; the plugin opens no sockets at all.
-- **One write, and it is yours** — the pin set described above. No config is touched, no daemon
-  state is mutated.
-- **Client code** renders the response and stores nothing.
+  `~/.codex`, the macOS Keychain, or provider auth files.
+- **No outbound network access.** Nothing leaves the machine; the plugin opens no sockets of its own.
+- **State writes** are two small atomic files under `$XDG_STATE_HOME/paseo-usage-sidebar/` (or
+  `~/.local/state/...`): `selection.json` for pins and `settings.json` for per-provider fees and
+  explicit window durations. No config or daemon state is mutated.
+- **Client code** renders aggregate responses; it does not read local logs.
 
 ## Project structure
 
 ```
 .
 ├── index.client.tsx                # Client entry — surface, sidebar item, command item, meter
-├── index.server.ts                 # Server entry — the three RPC handlers
+├── index.server.ts                 # Server entry — usage, settings, and pin RPC handlers
 ├── paseo-plugin.json               # Manifest (plugin id + requirements.paseo)
 ├── package.json                    # Typecheck-time dependencies only
 ├── tsconfig.json
@@ -193,18 +225,23 @@ Paseo plugins are unsandboxed by design, so this is worth reading before you tru
 │   ├── selection/store.ts          # In-renderer store keeping panel and meter in sync
 │   └── ui/
 │       ├── usage-surface.tsx       # The usage panel
+│       ├── token-stats.tsx         # Native token details and fee/duration settings
 │       ├── sidebar-meter.ts        # The always-visible DOM meter
 │       └── sidebar-title.ts        # Localized sidebar / Command Center label
 ├── server/
 │   ├── selection/state.ts          # Atomic pin-set persistence under XDG state
-│   └── usage/read.ts               # paseo.providers.listUsage(), validated
+│   ├── settings/state.ts           # Atomic fee/duration persistence under XDG state
+│   └── usage/
+│       ├── read.ts                 # Paseo usage plus local token enrichment
+│       └── session-reader.ts       # Cached, privacy-limited Pi JSONL reader
 └── shared/
     ├── i18n/messages.ts            # Message catalog for the nine locales Paseo ships
     ├── selection/contract.ts       # Pin-set schema, RPCs, and snapshot resolution
     └── usage/
         ├── contract.ts             # Zod mirror of the daemon's provider.usage.list payload
         ├── palette.ts              # The blue/orange/red bar ramp, shared by both surfaces
-        ├── format.ts               # Percentage, reset, age, tone, and balance formatting
+        ├── format.ts               # Quota, token, reset, age, tone, and balance formatting
+        ├── settings.ts             # Fee/duration RPC contract
         └── window-label.ts         # Daemon window ids → /usage-style window names
 ```
 
@@ -227,7 +264,9 @@ code, `@getpaseo/plugin/server` for server code.
 ```bash
 npm install
 npm run typecheck
+npm test
 
+# Local install on target daemon; no package is installed at runtime.
 paseo plugin install "$PWD"
 paseo plugin reload usage-sidebar   # after editing source
 paseo plugin ls                     # expect: running, no error
@@ -236,7 +275,8 @@ paseo plugin logs usage-sidebar
 
 `npm install` only installs typecheck-time dependencies. Paseo supplies every runtime module
 (`@getpaseo/plugin`, `react`, `react-native`, `@tanstack/react-query`, `zod`), so installing the
-plugin never runs a package manager.
+plugin never runs a package manager. `npm test` is one Node assert script covering aggregation,
+window boundaries, deduplication, malformed logs, cache refresh, and settings validation.
 
 It also points `core.hooksPath` at `.githooks/`, whose `commit-msg` hook checks the message against
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): a type from `feat`, `fix`,

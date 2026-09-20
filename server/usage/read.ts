@@ -1,20 +1,17 @@
 import type { PluginHandlerContext } from "@getpaseo/plugin/server";
+import { readSettingsState } from "../settings/state";
 import { UsageSnapshotSchema, type UsageSnapshot } from "../../shared/usage/contract";
+import type { UsageSettings } from "../../shared/usage/settings";
+import {
+  aggregateTokenUsage,
+  durationForWindow,
+  logProviderForUsageProvider,
+  readLocalSessions,
+  type SessionScan,
+} from "./session-reader";
 
 /**
- * Paseo 0.8 exposes provider usage through the plugin SDK, and the manifest
- * requires `>=0.8.0`, so `paseo.providers.listUsage()` is always there.
- *
- * Until 0.8 this file also carried a fallback that opened its own WebSocket to
- * the daemon and replayed the `provider.usage.list` handshake by hand, because
- * 0.7 gave plugins no usage API. That path is unreachable under the new
- * requirement, and it was the only reason server code depended on the DOM's
- * `WebSocket`/`MessageEvent`/`CloseEvent` globals, so it is gone along with the
- * `PASEO_USAGE_SIDEBAR_HOST` override and the config.json endpoint probing.
- */
-
-/**
- * The daemon's payload is validated rather than trusted: a provider that reports
+ * The daemon payload is validated rather than trusted: a provider that reports
  * a window shape this plugin does not model should degrade to a missing field,
  * not crash the surface.
  */
@@ -27,9 +24,58 @@ function normalize(payload: unknown): UsageSnapshot {
   });
 }
 
+const EMPTY_SCAN: SessionScan = {
+  status: "available",
+  records: [],
+  malformedLines: 0,
+  fileErrors: 0,
+  fileCount: 0,
+  filesParsed: 0,
+  duplicatesRemoved: 0,
+};
+
+function needsLocalScan(snapshot: UsageSnapshot, settings: UsageSettings): boolean {
+  return snapshot.providers.some(
+    (provider) =>
+      provider.status === "available" &&
+      logProviderForUsageProvider(provider.providerId) != null &&
+      provider.windows.some((window) => durationForWindow(provider.providerId, window.id, settings) != null),
+  );
+}
+
+/** Adds local Pi token stats without changing the daemon-owned quota readings. */
+export function enrichUsageSnapshot(
+  snapshot: UsageSnapshot,
+  settings: UsageSettings,
+  scan: SessionScan | null,
+  nowMs: number,
+): UsageSnapshot {
+  return {
+    ...snapshot,
+    providers: snapshot.providers.map((provider) => ({
+      ...provider,
+      windows: provider.windows.map((window) => ({
+        ...window,
+        tokenUsage: aggregateTokenUsage({
+          providerId: provider.providerId,
+          windowId: window.id,
+          resetsAt: window.resetsAt,
+          nowMs,
+          settings,
+          providerAvailable: provider.status === "available",
+          scan: scan ?? EMPTY_SCAN,
+        }),
+      })),
+    })),
+  };
+}
+
 export async function readUsage(
   _input: Record<string, never>,
   context: PluginHandlerContext,
 ): Promise<UsageSnapshot> {
-  return normalize(await context.paseo.providers.listUsage());
+  const snapshot = normalize(await context.paseo.providers.listUsage());
+  const settings = readSettingsState();
+  const scan = needsLocalScan(snapshot, settings) ? await readLocalSessions() : null;
+  return UsageSnapshotSchema.parse(enrichUsageSnapshot(snapshot, settings, scan, Date.now()));
 }

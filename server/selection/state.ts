@@ -37,13 +37,12 @@ export function writeSelectionState({ keys }: { keys: string[] }): Selection {
     const temporary = `${path}.${process.pid}.tmp`;
     writeFileSync(temporary, JSON.stringify(next), { mode: 0o600 });
     renameSync(temporary, path);
-  } catch (error) {
+  } catch {
     // Swallowing this used to make the panel lie: the meter repainted in the new
     // order, the write had failed, and the arrangement snapped back at the next
     // reload with nothing to explain it. Fail the RPC instead.
-    console.error("[usage-sidebar] Could not persist the sidebar selection", error);
-    throw new Error(`Could not persist the sidebar selection: ${error instanceof Error ? error.message : error}`);
+    console.error("[usage-sidebar] Could not persist the sidebar selection");
+    throw new Error("Could not persist the sidebar selection");
   }
-  console.log(`[usage-sidebar] Pinned rows saved: ${next.keys.join(", ") || "(none)"}`);
   return next;
 }

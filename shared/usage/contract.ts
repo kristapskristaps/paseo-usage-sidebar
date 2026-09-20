@@ -8,6 +8,55 @@ import { z } from "zod";
 export const UsageToneSchema = z.enum(["default", "ok", "warning", "danger"]);
 export const UsageStatusSchema = z.enum(["available", "unavailable", "error"]);
 
+export const TokenUsageStatusSchema = z.enum(["available", "partial", "unavailable", "unsupported"]);
+export const TokenCostStatusSchema = z.enum(["estimated", "partial", "unknown"]);
+export const TokenUsageReasonSchema = z.enum([
+  "duration-required",
+  "unsupported-provider",
+  "unsupported-window",
+  "provider-unavailable",
+  "logs-unavailable",
+  "partial-logs",
+  "stale-window",
+]);
+
+export const TokenModelUsageSchema = z.object({
+  model: z.string(),
+  calls: z.number().int().nonnegative(),
+  knownCalls: z.number().int().nonnegative(),
+  unknownCalls: z.number().int().nonnegative(),
+  inputTokens: z.number().nonnegative(),
+  outputTokens: z.number().nonnegative(),
+  cacheReadTokens: z.number().nonnegative(),
+  cacheWriteTokens: z.number().nonnegative(),
+  totalTokens: z.number().nonnegative(),
+  estimatedCost: z.number().nonnegative().nullable(),
+  costStatus: TokenCostStatusSchema,
+});
+
+export const TokenUsageSchema = z.object({
+  status: TokenUsageStatusSchema,
+  reason: TokenUsageReasonSchema.nullable(),
+  source: z.literal("pi-logged-estimate"),
+  calls: z.number().int().nonnegative(),
+  knownCalls: z.number().int().nonnegative(),
+  unknownCalls: z.number().int().nonnegative(),
+  inputTokens: z.number().nonnegative(),
+  outputTokens: z.number().nonnegative(),
+  cacheReadTokens: z.number().nonnegative(),
+  cacheWriteTokens: z.number().nonnegative(),
+  totalTokens: z.number().nonnegative(),
+  inputPct: z.number().min(0).max(100).nullable(),
+  outputPct: z.number().min(0).max(100).nullable(),
+  cacheReadPct: z.number().min(0).max(100).nullable(),
+  cacheWritePct: z.number().min(0).max(100).nullable(),
+  estimatedCost: z.number().nonnegative().nullable(),
+  costStatus: TokenCostStatusSchema,
+  monthlyFee: z.number().positive().finite().nullable(),
+  monthlyFeePct: z.number().nonnegative().finite().nullable(),
+  models: z.array(TokenModelUsageSchema),
+});
+
 export const UsageWindowSchema = z.object({
   id: z.string(),
   label: z.string(),
@@ -17,6 +66,7 @@ export const UsageWindowSchema = z.object({
   runsOutAt: z.string().nullable().optional(),
   shortfallPct: z.number().nullable().optional(),
   tone: UsageToneSchema.optional(),
+  tokenUsage: TokenUsageSchema.nullable().optional(),
 });
 
 export const UsageBalanceSchema = z.object({
@@ -61,6 +111,11 @@ export const UsageSnapshotSchema = z.object({
 });
 
 export type UsageTone = z.output<typeof UsageToneSchema>;
+export type TokenUsageStatus = z.output<typeof TokenUsageStatusSchema>;
+export type TokenCostStatus = z.output<typeof TokenCostStatusSchema>;
+export type TokenUsageReason = z.output<typeof TokenUsageReasonSchema>;
+export type TokenModelUsage = z.output<typeof TokenModelUsageSchema>;
+export type TokenUsage = z.output<typeof TokenUsageSchema>;
 export type UsageWindow = z.output<typeof UsageWindowSchema>;
 export type UsageBalance = z.output<typeof UsageBalanceSchema>;
 export type UsageDetail = z.output<typeof UsageDetailSchema>;

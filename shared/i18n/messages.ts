@@ -48,9 +48,44 @@ export type Messages = {
   moveUp: string;
   moveDown: string;
   reorder: string;
+  sidebarTokens: (tokens: string) => string;
+  sidebarMix: (input: string, output: string, cache: string) => string;
+  sidebarCost: (estimate: string) => string;
+  sidebarFee: (percentage: string) => string;
+  tokenUsage: string;
+  tokenSummary: (tokens: string, input: string, output: string, cacheRead: string, cacheWrite: string | null) => string;
+  tokenCalls: (calls: string) => string;
+  tokenCost: (estimate: string) => string;
+  tokenCostMonthly: (estimate: string, percentage: string) => string;
+  tokenCostPartial: string;
+  tokenCostUnknown: string;
+  tokenCostDisclaimer: string;
+  tokenPartial: string;
+  tokenUnavailable: string;
+  tokenUnsupported: string;
+  tokenDurationRequired: string;
+  tokenNoRecords: string;
+  tokenModelUnknown: (calls: string) => string;
+  monthlyFeeLabel: string;
+  monthlyFeeHint: string;
+  monthlyFeePlaceholder: string;
+  saveSettings: string;
+  saving: string;
+  saved: string;
+  monthlyFeeInvalid: string;
+  durationLabel: string;
+  durationHint: string;
+  durationUnset: string;
+  durationFiveHours: string;
+  durationSevenDays: string;
+  settingsSaveError: string;
 };
 
 const en: Messages = {
+  sidebarTokens: (tokens) => `${tokens} tokens`,
+  sidebarMix: (input, output, cache) => `In ${input} · Out ${output} · Cache ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `${percentage} of monthly fee`,
   title: "Plan usage",
   refresh: "Refresh",
   refreshing: "Refreshing...",
@@ -83,9 +118,41 @@ const en: Messages = {
   moveUp: "Move up",
   moveDown: "Move down",
   reorder: "Drag to reorder",
+  tokenUsage: "Local token usage",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} tokens · input ${input} · output ${output} · cache read ${cacheRead}${cacheWrite ? ` · cache write ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} calls`,
+  tokenCost: (estimate) => `Pi log API-equivalent estimate ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `Pi log API-equivalent estimate ${estimate} · ${percentage} of full monthly fee`,
+  tokenCostPartial: "Some calls had no logged price",
+  tokenCostUnknown: "Cost unavailable (Pi did not log a usable estimate)",
+  tokenCostDisclaimer: "Estimated from Pi logs; not billed, savings, or prorated quota.",
+  tokenPartial: "Partial local logs; valid records only",
+  tokenUnavailable: "Local token logs unavailable",
+  tokenUnsupported: "Token window unsupported",
+  tokenDurationRequired: "Set session duration to align local tokens",
+  tokenNoRecords: "No local records in this live window",
+  tokenModelUnknown: (calls) => `${calls} calls · usage unknown`,
+  monthlyFeeLabel: "Monthly fee (USD)",
+  monthlyFeeHint: "Optional. Blank disables fee comparison.",
+  monthlyFeePlaceholder: "e.g. 20",
+  saveSettings: "Save",
+  saving: "Saving…",
+  saved: "Saved",
+  monthlyFeeInvalid: "Enter a finite positive USD amount, or leave blank.",
+  durationLabel: "Session window duration",
+  durationHint: "SDK's Session window is ambiguous. Choose its actual reset period.",
+  durationUnset: "Not set",
+  durationFiveHours: "5 hours",
+  durationSevenDays: "7 days",
+  settingsSaveError: "Could not save usage settings.",
 };
 
 const zhCN: Messages = {
+  sidebarTokens: (tokens) => `${tokens} token`,
+  sidebarMix: (input, output, cache) => `输入 ${input} · 输出 ${output} · 缓存 ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `月费的 ${percentage}`,
   title: "用量",
   refresh: "刷新",
   refreshing: "正在刷新…",
@@ -120,9 +187,41 @@ const zhCN: Messages = {
   moveUp: "上移",
   moveDown: "下移",
   reorder: "拖拽排序",
+  tokenUsage: "本地 token 用量",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} 个 token · 输入 ${input} · 输出 ${output} · 缓存读取 ${cacheRead}${cacheWrite ? ` · 缓存写入 ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} 次调用`,
+  tokenCost: (estimate) => `Pi 日志 API 等价估算 ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `Pi 日志 API 等价估算 ${estimate} · 占完整月费 ${percentage}`,
+  tokenCostPartial: "部分调用没有记录费用",
+  tokenCostUnknown: "费用不可用（Pi 未记录可用估算）",
+  tokenCostDisclaimer: "根据 Pi 日志估算；不是账单、节省金额或按比例分摊的配额。",
+  tokenPartial: "本地日志不完整；仅统计有效记录",
+  tokenUnavailable: "本地 token 日志不可用",
+  tokenUnsupported: "不支持此 token 窗口",
+  tokenDurationRequired: "设置会话时长后才能对齐本地 token",
+  tokenNoRecords: "此实时窗口没有本地记录",
+  tokenModelUnknown: (calls) => `${calls} 次调用 · 用量未知`,
+  monthlyFeeLabel: "月费（USD）",
+  monthlyFeeHint: "可选。留空可停用费用比较。",
+  monthlyFeePlaceholder: "例如 20",
+  saveSettings: "保存",
+  saving: "保存中…",
+  saved: "已保存",
+  monthlyFeeInvalid: "请输入有限的正数 USD 金额，或留空。",
+  durationLabel: "会话窗口时长",
+  durationHint: "SDK 的 Session 窗口含义不明确。请选择实际重置周期。",
+  durationUnset: "未设置",
+  durationFiveHours: "5 小时",
+  durationSevenDays: "7 天",
+  settingsSaveError: "无法保存用量设置。",
 };
 
 const ja: Messages = {
+  sidebarTokens: (tokens) => `${tokens} トークン`,
+  sidebarMix: (input, output, cache) => `入力 ${input} · 出力 ${output} · キャッシュ ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `月額料金の ${percentage}`,
   title: "プラン使用量",
   refresh: "更新",
   refreshing: "更新中...",
@@ -155,9 +254,41 @@ const ja: Messages = {
   moveUp: "上へ",
   moveDown: "下へ",
   reorder: "ドラッグして並べ替え",
+  tokenUsage: "ローカルのトークン使用量",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} トークン · 入力 ${input} · 出力 ${output} · キャッシュ読込 ${cacheRead}${cacheWrite ? ` · キャッシュ書込 ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} 回の呼び出し`,
+  tokenCost: (estimate) => `Pi ログ API 相当推定 ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `Pi ログ API 相当推定 ${estimate} · 完全な月額料金の ${percentage}`,
+  tokenCostPartial: "一部の呼び出しに費用記録がありません",
+  tokenCostUnknown: "費用は利用できません（Pi に有効な推定値がありません）",
+  tokenCostDisclaimer: "Pi ログからの推定であり、請求額・節約額・按分された割当ではありません。",
+  tokenPartial: "ローカルログが不完全です。有効な記録のみ表示",
+  tokenUnavailable: "ローカルトークンログを利用できません",
+  tokenUnsupported: "このトークンウィンドウは未対応です",
+  tokenDurationRequired: "ローカルトークンを合わせるにはセッション時間を設定してください",
+  tokenNoRecords: "この現在のウィンドウにローカル記録はありません",
+  tokenModelUnknown: (calls) => `${calls} 回 · 使用量不明`,
+  monthlyFeeLabel: "月額料金（USD）",
+  monthlyFeeHint: "任意。空欄で料金比較を無効にします。",
+  monthlyFeePlaceholder: "例: 20",
+  saveSettings: "保存",
+  saving: "保存中…",
+  saved: "保存済み",
+  monthlyFeeInvalid: "有限の正の USD 金額を入力するか、空欄にしてください。",
+  durationLabel: "セッションウィンドウの期間",
+  durationHint: "SDK の Session ウィンドウは曖昧です。実際のリセット期間を選択してください。",
+  durationUnset: "未設定",
+  durationFiveHours: "5 時間",
+  durationSevenDays: "7 日",
+  settingsSaveError: "使用量設定を保存できませんでした。",
 };
 
 const ko: Messages = {
+  sidebarTokens: (tokens) => `${tokens} 토큰`,
+  sidebarMix: (input, output, cache) => `입력 ${input} · 출력 ${output} · 캐시 ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `월 요금의 ${percentage}`,
   title: "플랜 사용량",
   refresh: "새로고침",
   refreshing: "새로고침 중...",
@@ -190,9 +321,41 @@ const ko: Messages = {
   moveUp: "위로",
   moveDown: "아래로",
   reorder: "끌어서 순서 변경",
+  tokenUsage: "로컬 토큰 사용량",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} 토큰 · 입력 ${input} · 출력 ${output} · 캐시 읽기 ${cacheRead}${cacheWrite ? ` · 캐시 쓰기 ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls}회 호출`,
+  tokenCost: (estimate) => `Pi 로그 API 환산 추정 ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `Pi 로그 API 환산 추정 ${estimate} · 전체 월 요금의 ${percentage}`,
+  tokenCostPartial: "일부 호출에 비용 기록이 없음",
+  tokenCostUnknown: "비용을 알 수 없음 (Pi에 사용 가능한 추정값이 없음)",
+  tokenCostDisclaimer: "Pi 로그 기반 추정치이며 청구액·절감액·비례 배분 할당량이 아닙니다.",
+  tokenPartial: "로컬 로그 일부만 있음; 유효한 기록만 표시",
+  tokenUnavailable: "로컬 토큰 로그를 사용할 수 없음",
+  tokenUnsupported: "지원되지 않는 토큰 창",
+  tokenDurationRequired: "로컬 토큰을 맞추려면 세션 기간을 설정하세요",
+  tokenNoRecords: "현재 실시간 창에 로컬 기록 없음",
+  tokenModelUnknown: (calls) => `${calls}회 호출 · 사용량 알 수 없음`,
+  monthlyFeeLabel: "월 요금 (USD)",
+  monthlyFeeHint: "선택 사항. 비워 두면 요금 비교를 끕니다.",
+  monthlyFeePlaceholder: "예: 20",
+  saveSettings: "저장",
+  saving: "저장 중…",
+  saved: "저장됨",
+  monthlyFeeInvalid: "유한한 양의 USD 금액을 입력하거나 비워 두세요.",
+  durationLabel: "세션 창 기간",
+  durationHint: "SDK의 Session 창은 모호합니다. 실제 재설정 주기를 선택하세요.",
+  durationUnset: "설정 안 함",
+  durationFiveHours: "5시간",
+  durationSevenDays: "7일",
+  settingsSaveError: "사용량 설정을 저장하지 못했습니다.",
 };
 
 const es: Messages = {
+  sidebarTokens: (tokens) => `${tokens} tokens`,
+  sidebarMix: (input, output, cache) => `Entrada ${input} · Salida ${output} · Caché ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `${percentage} de la cuota mensual`,
   title: "Uso del plan",
   refresh: "Actualizar",
   refreshing: "Actualizando...",
@@ -225,9 +388,41 @@ const es: Messages = {
   moveUp: "Subir",
   moveDown: "Bajar",
   reorder: "Arrastra para reordenar",
+  tokenUsage: "Uso local de tokens",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} tokens · entrada ${input} · salida ${output} · lectura de caché ${cacheRead}${cacheWrite ? ` · escritura de caché ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} llamadas`,
+  tokenCost: (estimate) => `Estimación API equivalente del registro Pi ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `Estimación API equivalente del registro Pi ${estimate} · ${percentage} de la tarifa mensual completa`,
+  tokenCostPartial: "Algunas llamadas no tienen coste registrado",
+  tokenCostUnknown: "Coste no disponible (Pi no registró una estimación utilizable)",
+  tokenCostDisclaimer: "Estimación de los registros de Pi; no es una factura, ahorro ni cuota prorrateada.",
+  tokenPartial: "Registros locales parciales; solo registros válidos",
+  tokenUnavailable: "Registros locales de tokens no disponibles",
+  tokenUnsupported: "Ventana de tokens no compatible",
+  tokenDurationRequired: "Configura la duración de sesión para alinear los tokens locales",
+  tokenNoRecords: "No hay registros locales en esta ventana activa",
+  tokenModelUnknown: (calls) => `${calls} llamadas · uso desconocido`,
+  monthlyFeeLabel: "Tarifa mensual (USD)",
+  monthlyFeeHint: "Opcional. En blanco desactiva la comparación de tarifas.",
+  monthlyFeePlaceholder: "p. ej., 20",
+  saveSettings: "Guardar",
+  saving: "Guardando…",
+  saved: "Guardado",
+  monthlyFeeInvalid: "Introduce un importe USD positivo y finito, o déjalo en blanco.",
+  durationLabel: "Duración de la ventana de sesión",
+  durationHint: "La ventana Session del SDK es ambigua. Elige su periodo de reinicio real.",
+  durationUnset: "Sin configurar",
+  durationFiveHours: "5 horas",
+  durationSevenDays: "7 días",
+  settingsSaveError: "No se pudo guardar la configuración de uso.",
 };
 
 const fr: Messages = {
+  sidebarTokens: (tokens) => `${tokens} tokens`,
+  sidebarMix: (input, output, cache) => `Entrée ${input} · Sortie ${output} · Cache ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `${percentage} du forfait mensuel`,
   title: "Utilisation du forfait",
   refresh: "Actualiser",
   refreshing: "Actualisation...",
@@ -260,9 +455,41 @@ const fr: Messages = {
   moveUp: "Monter",
   moveDown: "Descendre",
   reorder: "Glisser pour réordonner",
+  tokenUsage: "Utilisation locale des tokens",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} tokens · entrée ${input} · sortie ${output} · lecture cache ${cacheRead}${cacheWrite ? ` · écriture cache ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} appels`,
+  tokenCost: (estimate) => `Estimation API équivalente du journal Pi ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `Estimation API équivalente du journal Pi ${estimate} · ${percentage} du forfait mensuel complet`,
+  tokenCostPartial: "Certaines requêtes n'ont aucun coût enregistré",
+  tokenCostUnknown: "Coût indisponible (Pi n'a pas journalisé d'estimation utilisable)",
+  tokenCostDisclaimer: "Estimation des journaux Pi ; pas une facture, une économie ni un quota au prorata.",
+  tokenPartial: "Journaux locaux partiels ; enregistrements valides uniquement",
+  tokenUnavailable: "Journaux locaux de tokens indisponibles",
+  tokenUnsupported: "Fenêtre de tokens non prise en charge",
+  tokenDurationRequired: "Définissez la durée de session pour aligner les tokens locaux",
+  tokenNoRecords: "Aucun enregistrement local dans cette fenêtre active",
+  tokenModelUnknown: (calls) => `${calls} appels · utilisation inconnue`,
+  monthlyFeeLabel: "Forfait mensuel (USD)",
+  monthlyFeeHint: "Facultatif. Vide, la comparaison est désactivée.",
+  monthlyFeePlaceholder: "ex. 20",
+  saveSettings: "Enregistrer",
+  saving: "Enregistrement…",
+  saved: "Enregistré",
+  monthlyFeeInvalid: "Saisissez un montant USD positif et fini, ou laissez vide.",
+  durationLabel: "Durée de la fenêtre de session",
+  durationHint: "La fenêtre Session du SDK est ambiguë. Choisissez sa période réelle de réinitialisation.",
+  durationUnset: "Non défini",
+  durationFiveHours: "5 heures",
+  durationSevenDays: "7 jours",
+  settingsSaveError: "Impossible d'enregistrer les paramètres d'utilisation.",
 };
 
 const ptBR: Messages = {
+  sidebarTokens: (tokens) => `${tokens} tokens`,
+  sidebarMix: (input, output, cache) => `Entrada ${input} · Saída ${output} · Cache ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `${percentage} da mensalidade`,
   title: "Uso do plano",
   refresh: "Atualizar",
   refreshing: "Atualizando...",
@@ -295,9 +522,41 @@ const ptBR: Messages = {
   moveUp: "Mover para cima",
   moveDown: "Mover para baixo",
   reorder: "Arraste para reordenar",
+  tokenUsage: "Uso local de tokens",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} tokens · entrada ${input} · saída ${output} · leitura do cache ${cacheRead}${cacheWrite ? ` · gravação do cache ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} chamadas`,
+  tokenCost: (estimate) => `Estimativa API equivalente do log do Pi ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `Estimativa API equivalente do log do Pi ${estimate} · ${percentage} da mensalidade completa`,
+  tokenCostPartial: "Algumas chamadas não têm custo registrado",
+  tokenCostUnknown: "Custo indisponível (o Pi não registrou uma estimativa utilizável)",
+  tokenCostDisclaimer: "Estimativa dos logs do Pi; não é cobrança, economia ou cota rateada.",
+  tokenPartial: "Logs locais parciais; apenas registros válidos",
+  tokenUnavailable: "Logs locais de tokens indisponíveis",
+  tokenUnsupported: "Janela de tokens não compatível",
+  tokenDurationRequired: "Defina a duração da sessão para alinhar os tokens locais",
+  tokenNoRecords: "Nenhum registro local nesta janela ativa",
+  tokenModelUnknown: (calls) => `${calls} chamadas · uso desconhecido`,
+  monthlyFeeLabel: "Mensalidade (USD)",
+  monthlyFeeHint: "Opcional. Em branco desativa a comparação de preço.",
+  monthlyFeePlaceholder: "ex.: 20",
+  saveSettings: "Salvar",
+  saving: "Salvando…",
+  saved: "Salvo",
+  monthlyFeeInvalid: "Informe um valor USD positivo e finito, ou deixe em branco.",
+  durationLabel: "Duração da janela da sessão",
+  durationHint: "A janela Session do SDK é ambígua. Escolha o período real de redefinição.",
+  durationUnset: "Não definido",
+  durationFiveHours: "5 horas",
+  durationSevenDays: "7 dias",
+  settingsSaveError: "Não foi possível salvar as configurações de uso.",
 };
 
 const ru: Messages = {
+  sidebarTokens: (tokens) => `${tokens} токенов`,
+  sidebarMix: (input, output, cache) => `Ввод ${input} · Вывод ${output} · Кэш ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `${percentage} месячной платы`,
   title: "Использование тарифа",
   refresh: "Обновить",
   refreshing: "Обновление...",
@@ -330,9 +589,41 @@ const ru: Messages = {
   moveUp: "Вверх",
   moveDown: "Вниз",
   reorder: "Перетащите, чтобы изменить порядок",
+  tokenUsage: "Локальное использование токенов",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} токенов · ввод ${input} · вывод ${output} · чтение кэша ${cacheRead}${cacheWrite ? ` · запись кэша ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} вызовов`,
+  tokenCost: (estimate) => `API-эквивалентная оценка по журналу Pi ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `API-эквивалентная оценка по журналу Pi ${estimate} · ${percentage} от полной месячной платы`,
+  tokenCostPartial: "Для некоторых вызовов стоимость не записана",
+  tokenCostUnknown: "Стоимость недоступна (Pi не записал пригодную оценку)",
+  tokenCostDisclaimer: "Оценка по журналам Pi; это не счёт, экономия или пропорциональная квота.",
+  tokenPartial: "Локальные журналы неполны; только действительные записи",
+  tokenUnavailable: "Локальные журналы токенов недоступны",
+  tokenUnsupported: "Окно токенов не поддерживается",
+  tokenDurationRequired: "Укажите длительность сессии для сопоставления локальных токенов",
+  tokenNoRecords: "В этом текущем окне нет локальных записей",
+  tokenModelUnknown: (calls) => `${calls} вызовов · использование неизвестно`,
+  monthlyFeeLabel: "Месячная плата (USD)",
+  monthlyFeeHint: "Необязательно. Пустое поле отключает сравнение платы.",
+  monthlyFeePlaceholder: "например, 20",
+  saveSettings: "Сохранить",
+  saving: "Сохранение…",
+  saved: "Сохранено",
+  monthlyFeeInvalid: "Введите конечную положительную сумму в USD или оставьте поле пустым.",
+  durationLabel: "Длительность окна сессии",
+  durationHint: "Окно Session SDK неоднозначно. Выберите фактический период сброса.",
+  durationUnset: "Не задано",
+  durationFiveHours: "5 часов",
+  durationSevenDays: "7 дней",
+  settingsSaveError: "Не удалось сохранить настройки использования.",
 };
 
 const ar: Messages = {
+  sidebarTokens: (tokens) => `${tokens} رمز`,
+  sidebarMix: (input, output, cache) => `إدخال ${input} · إخراج ${output} · مخبأ ${cache}`,
+  sidebarCost: (estimate) => `API ≈ ${estimate}`,
+  sidebarFee: (percentage) => `${percentage} من الرسوم الشهرية`,
   title: "استخدام الخطة",
   refresh: "تحديث",
   refreshing: "جارٍ التحديث...",
@@ -365,6 +656,34 @@ const ar: Messages = {
   moveUp: "تحريك لأعلى",
   moveDown: "تحريك لأسفل",
   reorder: "اسحب لإعادة الترتيب",
+  tokenUsage: "استخدام الرموز المحلي",
+  tokenSummary: (tokens, input, output, cacheRead, cacheWrite) =>
+    `${tokens} رمز · إدخال ${input} · إخراج ${output} · قراءة التخزين المؤقت ${cacheRead}${cacheWrite ? ` · كتابة التخزين المؤقت ${cacheWrite}` : ""}`,
+  tokenCalls: (calls) => `${calls} استدعاءات`,
+  tokenCost: (estimate) => `تقدير Pi المكافئ لـ API ${estimate}`,
+  tokenCostMonthly: (estimate, percentage) => `تقدير Pi المكافئ لـ API ${estimate} · ${percentage} من الرسوم الشهرية الكاملة`,
+  tokenCostPartial: "بعض الاستدعاءات بلا تكلفة مسجلة",
+  tokenCostUnknown: "التكلفة غير متاحة (لم يسجل Pi تقديراً صالحاً)",
+  tokenCostDisclaimer: "تقدير من سجلات Pi؛ ليس فاتورة أو وفراً أو حصة موزعة تناسبياً.",
+  tokenPartial: "السجلات المحلية جزئية؛ السجلات الصالحة فقط",
+  tokenUnavailable: "سجلات الرموز المحلية غير متاحة",
+  tokenUnsupported: "نافذة الرموز غير مدعومة",
+  tokenDurationRequired: "حدد مدة الجلسة لمطابقة الرموز المحلية",
+  tokenNoRecords: "لا توجد سجلات محلية في هذه النافذة الحالية",
+  tokenModelUnknown: (calls) => `${calls} استدعاءات · الاستخدام غير معروف`,
+  monthlyFeeLabel: "الرسوم الشهرية (USD)",
+  monthlyFeeHint: "اختياري. إفراغه يعطل مقارنة الرسوم.",
+  monthlyFeePlaceholder: "مثال: 20",
+  saveSettings: "حفظ",
+  saving: "جارٍ الحفظ…",
+  saved: "تم الحفظ",
+  monthlyFeeInvalid: "أدخل مبلغ USD موجباً ومنتهياً، أو اتركه فارغاً.",
+  durationLabel: "مدة نافذة الجلسة",
+  durationHint: "نافذة Session في SDK غامضة. اختر فترة إعادة الضبط الفعلية.",
+  durationUnset: "غير محدد",
+  durationFiveHours: "5 ساعات",
+  durationSevenDays: "7 أيام",
+  settingsSaveError: "تعذر حفظ إعدادات الاستخدام.",
 };
 
 export const MESSAGES: Record<Locale, Messages> = {

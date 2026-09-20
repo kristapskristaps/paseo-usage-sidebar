@@ -10,6 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "node --no-warnings --experimental-strip-types test/token-cost.test.ts",
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {

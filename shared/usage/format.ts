@@ -1,5 +1,5 @@
 import type { Locale, Messages } from "../i18n/messages";
-import type { UsageBalance, UsageTone, UsageWindow } from "./contract";
+import type { TokenModelUsage, TokenUsage, UsageBalance, UsageTone, UsageWindow } from "./contract";
 
 /**
  * Value shapes mirror Paseo's own provider-usage helpers (percent rounding, tone
@@ -151,8 +151,14 @@ export function formatAgo(iso: string | null | undefined, messages: Messages): s
   return duration ? messages.ago(duration) : null;
 }
 
-function formatTokenCount(value: number, locale: Locale): string {
+export function formatTokenCount(value: number, locale: Locale): string {
   return new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
+
+/** Percentages of a monthly fee may exceed 100%; quota percentages are clamped separately. */
+export function formatRatioPct(value: number, locale: Locale): string {
+  const format = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 });
+  return value > 0 && value < 0.1 ? `<${format.format(0.001)}` : format.format(value / 100);
 }
 
 export function formatAmount(value: number, unit: UsageBalance["unit"], locale: Locale): string {
@@ -164,6 +170,80 @@ export function formatAmount(value: number, unit: UsageBalance["unit"], locale: 
     default:
       return new Intl.NumberFormat(locale).format(value);
   }
+}
+
+export function formatEstimatedCost(value: number, locale: Locale): string {
+  return value > 0 && value < 0.01
+    ? `<${formatAmount(0.01, "usd", locale)}`
+    : formatAmount(value, "usd", locale);
+}
+
+export function formatTokenMix(
+  stats: Pick<TokenModelUsage, "totalTokens" | "inputTokens" | "outputTokens" | "cacheReadTokens" | "cacheWriteTokens">,
+  locale: Locale,
+  messages: Messages,
+): string {
+  const bucket = (count: number) => `${formatTokenCount(count, locale)} (${stats.totalTokens > 0
+    ? formatRatioPct(count / stats.totalTokens * 100, locale) : "—"})`;
+  return messages.tokenSummary(
+    formatTokenCount(stats.totalTokens, locale),
+    bucket(stats.inputTokens), bucket(stats.outputTokens), bucket(stats.cacheReadTokens),
+    stats.cacheWriteTokens > 0 ? bucket(stats.cacheWriteTokens) : null,
+  );
+}
+
+/** Compact enough for the sidebar, while retaining the three requested mix shares. */
+export function formatTokenSummary(stats: TokenUsage, locale: Locale, messages: Messages): string | null {
+  if (stats.status === "unsupported") {
+    return stats.reason === "duration-required" ? messages.tokenDurationRequired : messages.tokenUnsupported;
+  }
+  if (stats.status === "unavailable") {
+    return messages.tokenUnavailable;
+  }
+  if (stats.calls === 0) {
+    return messages.tokenNoRecords;
+  }
+  const summary = stats.knownCalls === 0
+    ? messages.tokenModelUnknown(formatTokenCount(stats.calls, locale))
+    : `${formatTokenMix(stats, locale, messages)} · ${messages.tokenCalls(formatTokenCount(stats.calls, locale))}${
+      stats.unknownCalls > 0 ? ` · ${messages.tokenModelUnknown(formatTokenCount(stats.unknownCalls, locale))}` : ""}`;
+  return stats.status === "partial" ? `${summary} · ${messages.tokenPartial}` : summary;
+}
+
+export function formatTokenCost(stats: TokenUsage, locale: Locale, messages: Messages): string | null {
+  if (stats.calls === 0 || stats.status === "unsupported" || stats.status === "unavailable") {
+    return null;
+  }
+  if (stats.estimatedCost == null) {
+    return messages.tokenCostUnknown;
+  }
+  const estimate = formatEstimatedCost(stats.estimatedCost, locale);
+  const line =
+    stats.monthlyFeePct == null
+      ? messages.tokenCost(estimate)
+      : messages.tokenCostMonthly(estimate, formatRatioPct(stats.monthlyFeePct, locale));
+  return stats.costStatus === "partial" ? `${line} · ${messages.tokenCostPartial}` : line;
+}
+
+/** Sidebar is a glance view; detailed counts and coverage warnings remain in its tooltip/panel. */
+export function formatSidebarUsage(stats: TokenUsage, locale: Locale, messages: Messages) {
+  const detail = [formatTokenSummary(stats, locale, messages), formatTokenCost(stats, locale, messages)]
+    .filter(Boolean).join("\n");
+  if (stats.status === "unsupported" || stats.status === "unavailable" || stats.knownCalls === 0) {
+    return { total: formatTokenSummary(stats, locale, messages), mix: null, cost: null, fee: null, detail };
+  }
+  const percent = (value: number | null) => value == null ? "—" : formatRatioPct(value, locale);
+  const partial = stats.costStatus === "partial" || stats.status === "partial";
+  return {
+    total: messages.sidebarTokens(formatTokenCount(stats.totalTokens, locale)),
+    mix: messages.sidebarMix(percent(stats.inputPct), percent(stats.outputPct),
+      percent(stats.cacheReadPct)),
+    cost: stats.estimatedCost == null ? null : messages.sidebarCost(
+      `${formatEstimatedCost(stats.estimatedCost, locale)}${partial ? "+" : ""}`),
+    fee: stats.monthlyFeePct == null ? null : messages.sidebarFee(
+      `${formatRatioPct(stats.monthlyFeePct, locale)}${partial ? "+" : ""}`),
+    detail,
+  };
 }
 
 /** Where the ramp steps. Below `WARNING` a window is simply not the problem. */

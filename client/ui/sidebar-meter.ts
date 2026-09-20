@@ -10,6 +10,7 @@ import {
   formatResetPrimary,
   formatResetSecondary,
   formatRunsOutLabel,
+  formatSidebarUsage,
   resolveTone,
 } from "../../shared/usage/format";
 import { STATUS_DARK, STATUS_LIGHT, type Palette } from "../../shared/usage/palette";
@@ -171,7 +172,12 @@ function readAppearance(): Appearance | null {
   };
 }
 
-type MeterRow = { label: string; usedPct: number | null; tone: UsageTone; window: UsageWindow };
+type MeterRow = {
+  label: string;
+  usedPct: number | null;
+  tone: UsageTone;
+  window: UsageWindow;
+};
 type MeterGroup = { provider: string; rows: MeterRow[] };
 
 type RowTiming = { text: string | null; atRisk: boolean; alternate: string | null };
@@ -324,6 +330,33 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
           // The meter as a whole is click-through; a row with a tooltip has to opt
           // back in, because pointer-events:none also suppresses hover.
           item.style.pointerEvents = "auto";
+        }
+
+        if (row.window.tokenUsage) {
+          const usage = formatSidebarUsage(row.window.tokenUsage, locale, messages);
+          const overview = document.createElement("div");
+          overview.style.cssText = `display:flex;flex-direction:column;gap:3px;margin-top:3px;color:${labelColor};font-size:11px;line-height:1.4;font-variant-numeric:tabular-nums;`;
+          overview.title = usage.detail;
+          overview.setAttribute("aria-label", usage.detail);
+          overview.style.pointerEvents = "auto";
+
+          const totals = document.createElement("div");
+          totals.style.cssText = "display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:600;";
+          for (const text of [usage.total, usage.cost]) {
+            if (!text) continue;
+            const value = document.createElement("span");
+            value.textContent = text;
+            totals.append(value);
+          }
+          overview.append(totals);
+          for (const text of [usage.mix, usage.fee]) {
+            if (!text) continue;
+            const line = document.createElement("div");
+            line.textContent = text;
+            line.style.overflowWrap = "anywhere";
+            overview.append(line);
+          }
+          item.append(overview);
         }
 
         section.append(item);
