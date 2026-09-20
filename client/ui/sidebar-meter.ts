@@ -7,6 +7,7 @@ import { pinnedRows, readSelection, type Selection } from "../../shared/selectio
 import {
   clampPct,
   formatPct,
+  formatEstimatedCost,
   formatResetPrimary,
   formatResetSecondary,
   formatRunsOutLabel,
@@ -299,12 +300,18 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
         head.style.cssText = "display:flex;flex-direction:column;gap:3px;";
 
         const label = document.createElement("span");
-        label.textContent = [row.label, timing.text].filter(Boolean).join(" ");
+        const resetAt = row.window.resetsAt ? new Date(row.window.resetsAt) : null;
+        label.textContent = resetAt && Number.isFinite(resetAt.getTime())
+          ? new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(resetAt)
+          : "—";
         label.style.cssText = `color:${timing.atRisk ? palette.danger : labelColor};font-size:11px;line-height:1.4;`;
 
         const value = document.createElement("span");
-        value.textContent = [row.usedPct != null ? formatPct(row.usedPct, locale) : "\u2014", usage?.cost]
+        const cost = usage?.cost && stats?.estimatedCost != null
+          ? formatEstimatedCost(stats.estimatedCost, locale) : null;
+        value.textContent = [row.usedPct != null ? formatPct(row.usedPct, locale) : "\u2014", cost]
           .filter(Boolean).join(" · ");
+        if (usage) value.setAttribute("aria-label", usage.detail);
         value.style.cssText = `color:${labelColor};font-size:11px;font-weight:500;flex-shrink:0;`;
 
         head.append(label, value);
@@ -318,8 +325,8 @@ export function startSidebarMeter(client: PluginClientContext): PluginCleanup {
         track.append(fill);
         item.append(head, track);
 
-        if (timing.alternate) {
-          item.title = `${row.label} · ${timing.alternate}`;
+        if (timing.text || timing.alternate || usage) {
+          item.title = [row.label, timing.text, timing.alternate, usage?.detail].filter(Boolean).join(" · ");
           // The meter as a whole is click-through; a row with a tooltip has to opt
           // back in, because pointer-events:none also suppresses hover.
           item.style.pointerEvents = "auto";
